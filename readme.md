@@ -177,6 +177,34 @@ grunt.initConfig({
 });
 ```
 
+### Spawn version
+
+Use the spawn version if the command's output is big or you want to redirect the output to files.
+
+```js
+grunt.initConfig({
+	shell: {
+		app: {
+			command: "mkdir" },
+            args: ["test"]
+            options: {
+            spawn: true,
+                stdout: function (data) {
+                    console.log ("STDOUT: " + data);
+                },
+                stderr: function (data) {
+                    console.log ("STDERR: " + data);
+                },
+                callback: function (code, signal, cb) {
+                    console.log("Finished with " + code + " " + signal);
+                    cb();
+                }
+            }
+		}
+	}
+});
+```
+
 
 ## Config
 
@@ -187,7 +215,17 @@ Type: `string` `Function`
 
 Command to run or a function which returns the command. Supports underscore templates.
 
+*If `spawn` is true, `command` should represent the command or the file path to be run, not including double quotes or arguments. User `arg` parameters for arguments instead.*
+
 *Command can be omitted by directly setting the target with the command.*
+
+### args
+
+Type: `string` `Function` `array`
+
+If it's a string it should be the only argument passed the executable. Use array for multiple arguments.
+
+*Can only be used with `spawn: true`.*
 
 ### cwd
 
@@ -200,15 +238,19 @@ Shortcut. Same as `options.execOptions.cwd` (see below).
 
 ### stdout
 
-Type: `boolean`<br>
+Type: `boolean` `Function` <br>
 Default: `true`
 
-Show stdout in the terminal.
+Show stdout in the terminal if `true`.
+If it's a function, it will call the function back with chunks of data as a parameter.
 
 ### stderr
 
-Type: `boolean`<br>
+Type: `boolean` `Function`<br>
 Default: `true`
+
+Show stderr in the terminal if `true`.
+If it's a function, it will call the function back with chunks of data as a parameter.
 
 Show stderr in the terminal.
 
@@ -233,9 +275,12 @@ Default: `false`
 
 Set `stdin` to [act as a raw device](https://nodejs.org/api/tty.html#tty_readstream_setrawmode_mode).
 
-### callback(err, stdout, stderr, cb)
+### callback
 
 Type: `Function`
+
+If spawn is `false`, function has these parameters: (err, stdout, stderr, cb)
+If spawn is `true`, function has these parameters: (code, signal, cb)
 
 Lets you override the default callback with your own.
 
@@ -248,12 +293,20 @@ Default: `true`
 
 Execute local binaries by name like [`$ npm run-script`](https://www.keithcirkel.co.uk/how-to-use-npm-as-a-build-tool/).
 
+### spawn
+
+Type: `boolean`<br>
+Default: `false`
+
+Use [`spawn`](https://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options) rather than [`exec`](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback).
+
 ### execOptions
 
 Type: `Object`
 
-Specify some options to be passed to the [.exec()](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback) method:
+Specify some options to be passed to the [.exec()](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback) method, or [`.spawn()`](https://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options) method if `spawn` is set to `true`:
 
+For `exec`:
 - `cwd` string *Current working directory of the child process*
 - `env` Object *Environment key-value pairs*
 - `setsid` boolean
@@ -262,6 +315,13 @@ Specify some options to be passed to the [.exec()](https://nodejs.org/api/child_
 - `maxBuffer` number *(Default: `1000 * 1000 * 10` → 10 MB)*
 - `killSignal` string *(Default: `'SIGTERM'`)*
 
+For `spawn`:
+- `cwd` string *Current working directory of the child process*
+- `env` Object *Environment key-value pairs*
+- `argv0` String *Explicitly set the value of argv[0] sent to the child process. This will be set to command if not specified.*
+- `stdio` Array or String *Child's stdio configuration. (See [options.stdio](https://nodejs.org/api/child_process.html#child_process_options_stdio))*
+- `detached` Boolean *Prepare child to run independently of its parent process. Specific behavior depends on the platform*
+- `shell` Boolean or String * If true, runs command inside of a shell. Uses '/bin/sh' on UNIX, and 'cmd.exe' on Windows. A different shell can be specified as a string. The shell should understand the -c switch on UNIX, or /d /s /c on Windows. Defaults to false (no shell).*
 
 ## License
 

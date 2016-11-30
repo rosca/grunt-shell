@@ -1,5 +1,6 @@
 'use strict';
 const exec = require('child_process').exec;
+const spawn = require('child_process').spawn;
 const chalk = require('chalk');
 const npmRunPath = require('npm-run-path');
 
@@ -15,12 +16,19 @@ module.exports = grunt => {
 			failOnError: true,
 			stdinRawMode: false,
 			preferLocal: true,
+			spawn: false,
 			execOptions: {
 				env: null
 			}
 		});
 
 		let cmd = typeof this.data === 'string' ? this.data : this.data.command;
+		let args = this.data.args;
+		args = typeof args === 'function' ? args.apply(grunt, arguments) : args;
+		args = (typeof args === 'string' ? [args] : args) || [];
+		for (var i = 0; i < args.length; ++i) {
+			args[i] = grunt.template.process(args[i]);
+		}
 
 		if (cmd === undefined) {
 			throw new Error('`command` required');
@@ -40,7 +48,9 @@ module.exports = grunt => {
 			opts.execOptions.cwd = this.data.cwd;
 		}
 
-		const cp = exec(cmd, opts.execOptions, (err, stdout, stderr) => {
+		const cp = opts.spawn
+		? spawn(cmd, args, opts.execOptions)
+		: exec(cmd, opts.execOptions, (err, stdout, stderr) => {
 			if (typeof opts.callback === 'function') {
 				opts.callback.call(this, err, stdout, stderr, cb);
 			} else {
@@ -51,8 +61,29 @@ module.exports = grunt => {
 			}
 		});
 
+		if (opts.spawn) {
+			cp.on('close', (code, signal) => {
+				if (typeof opts.callback === 'function') {
+					opts.callback.call(this, code, signal, cb);
+				} else {
+					cb();
+				}
+			});
+
+			cp.on('error', (err) => {
+				if (opts.failOnError) {
+					grunt.warn(err);
+				}
+				cb();
+			});
+		}
+
 		const captureOutput = (child, output) => {
-			if (grunt.option('color') === false) {
+			if (typeof output === 'function') {
+				child.on('data', data => {
+					output.call(this, data);
+				});
+			} else if (grunt.option('color') === false) {
 				child.on('data', data => {
 					output.write(chalk.stripColor(data));
 				});
@@ -61,14 +92,14 @@ module.exports = grunt => {
 			}
 		};
 
-		grunt.verbose.writeln('Command:', chalk.yellow(cmd));
+		grunt.verbose.writeln('Command:', chalk.yellow(cmd + ' ' + args.join(' ')));
 
 		if (opts.stdout || grunt.option('verbose')) {
-			captureOutput(cp.stdout, process.stdout);
+			captureOutput(cp.stdout, opts.stdout === true ? process.stdout : opts.stdout);
 		}
 
 		if (opts.stderr || grunt.option('verbose')) {
-			captureOutput(cp.stderr, process.stderr);
+			captureOutput(cp.stderr, opts.stderr === true ? process.stderr : opts.stderr);
 		}
 
 		if (opts.stdin) {
