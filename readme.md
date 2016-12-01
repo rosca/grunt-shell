@@ -185,21 +185,21 @@ Use the spawn version if the command's output is big or you want to redirect the
 grunt.initConfig({
 	shell: {
 		app: {
-			command: "mkdir" },
-            args: ["test"]
-            options: {
-            spawn: true,
-                stdout: function (data) {
-                    console.log ("STDOUT: " + data);
-                },
-                stderr: function (data) {
-                    console.log ("STDERR: " + data);
-                },
-                callback: function (code, signal, cb) {
-                    console.log("Finished with " + code + " " + signal);
-                    cb();
-                }
-            }
+			command: "mkdir",
+			args: ["test"]
+			options: {
+				spawn: true,
+				stdout: function (data) {
+					console.log ("STDOUT: " + data);
+				},
+				stderr: function (data) {
+					console.log ("STDERR: " + data);
+				},
+				callback: function (code, signal, cb) {
+					console.log("Finished with " + code + " " + signal);
+					cb();
+				}
+			}
 		}
 	}
 });
